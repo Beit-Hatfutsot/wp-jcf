@@ -1,0 +1,23 @@
+#content h3 {
+font-size : 21px;
+font-weight : bold ;
+line-height : 1.3em;
+margin-top : -10px ;
+font-family : arial ;
+
+}
+
+#site-title {   font-size : 24px ;    }
+
+.header-search {
+		display:block;
+
+		position:relative;
+
+		float :right ;
+top : -30px ;
+	}
+
+.header-search #searchsubmit  {  }
+
+#content h5 {word-spacing:15px; padding : 0px ; margin : 0px ; margin-top : -20px}
