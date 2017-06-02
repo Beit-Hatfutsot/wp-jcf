@@ -1,16 +1,15 @@
 <?php
 /*
- * Plugin Name: Highlight Search Terms
- * Plugin URI: http://status301.net/wordpress-plugins/highlight-search-terms
- * Description: Wraps search terms in the HTML5 mark tag when referrer is a non-secure search engine or within wp search results. Read <a href="http://wordpress.org/extend/plugins/highlight-search-terms/other_notes/">Other Notes</a> for instructions and examples for styling the highlights. <a href="https://www.paypal.com/cgi-bin/webscr?cmd=_donations&business=ravanhagen%40gmail%2ecom&item_name=Highlight%20Search%20Terms&item_number=0%2e6&no_shipping=0&tax=0&bn=PP%2dDonationsBF&charset=UTF%2d8&lc=us" title="Thank you!">Tip jar</a>.
- * Version: 1.4
- * Author: RavanH
- * Author URI: http://status301.net/
- * Text Domain: highlight-search-terms
- * 
- */
+Plugin Name: Highlight Search Terms
+Plugin URI: http://status301.net/wordpress-plugins/highlight-search-terms
+Description: Wraps search terms in the HTML5 mark tag when referrer is a non-secure search engine or within wp search results. Read <a href="http://wordpress.org/extend/plugins/highlight-search-terms/other_notes/">Other Notes</a> for instructions and examples for styling the highlights. <a href="https://www.paypal.com/cgi-bin/webscr?cmd=_donations&business=ravanhagen%40gmail%2ecom&item_name=Highlight%20Search%20Terms&item_number=1%2e4&no_shipping=0&tax=0&bn=PP%2dDonationsBF&charset=UTF%2d8&lc=us" title="Thank you!">Tip jar</a>.
+Version: 1.4.4
+Author: RavanH
+Author URI: http://status301.net/
+Text Domain: highlight-search-terms
+*/
 
-/*  Copyright 2016  RavanH  (email : ravanhagen@gmail.com)
+/*  Copyright 2017  RavanH  (email : ravanhagen@gmail.com)
 
     This program is free software; you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -45,7 +44,10 @@ class HighlightSearchTerms {
 	*/
 
 	// plugin version
-	private static $version = null;
+	private static $version = '1.4.4';
+
+	// filtered search terms
+	private static $search_terms = null;
 
 	// Change or extend this to match themes content div ID or classes.
 	// The hilite script will test div ids/classes and use the first one it finds.
@@ -54,7 +56,7 @@ class HighlightSearchTerms {
 	// followed by a '.' and then the class name to *improve script speed*.
 	static $areas = array(
 			'#groups-dir-list', '#members-dir-list', // BuddyPress compat
-			'li.bbp-body', // bbPress compat
+			'div.bbp-topic-content,div.bbp-reply-content,li.bbp-forum-info,.bbp-topic-title,.bbp-reply-title', // bbPress compat
 			'article',
 			'div.hentry',
 			'div.post',
@@ -73,86 +75,90 @@ class HighlightSearchTerms {
 	* Plugin functions
 	*/
 
-	public static function get_version() {
-		if ( null === self::$version ) { // "=== null" is twice as fast in PHP 5 while "is_null()" is slightly faster in PHP 7
-			$data = get_file_data( __FILE__ , array('Version' => 'Version') );
-			self::$version = isset($data['Version']) ? $data['Version'] : false;
-		}
-		return self::$version;
-	}
-
 	public static function init() {
 		// -- HOOKING INTO WP -- //
-		add_action('wp_enqueue_scripts', array(__CLASS__, 'enqueue_script'));
+		add_action( 'wp_enqueue_scripts', array(__CLASS__, 'enqueue_script') );
 
 		// Set query string as js variable in footer
-		add_action('wp_footer', array(__CLASS__, 'query') );
+		add_action( 'wp_footer', array(__CLASS__, 'print_script') );
 
-		// append query string to results permalinks
-		add_filter('post_link', array(__CLASS__,'append_search_query') );
-		add_filter('post_type_link', array(__CLASS__,'append_search_query') );
-		add_filter('page_link', array(__CLASS__,'append_search_query') );
-		// TODO do this for bbPress search result links
+		// append search query string to results permalinks
+		add_action( 'parse_query', array(__CLASS__,'add_url_filters') );
+	}
+
+	public static function add_url_filters() {
+		if ( is_search() ) {
+			add_filter('post_link', array(__CLASS__,'append_search_query') );
+			add_filter('post_type_link', array(__CLASS__,'append_search_query') );
+			add_filter('page_link', array(__CLASS__,'append_search_query') );
+			add_filter('bbp_get_topic_permalink', array(__CLASS__,'append_search_query') );
+		}
+		// for bbPress search result links
+		if ( function_exists('bbp_is_search') && bbp_is_search() ) {
+			add_filter('bbp_get_topic_permalink', array(__CLASS__,'append_search_query') );
+			add_filter('bbp_get_reply_url', array(__CLASS__,'append_search_query') );
+		}
+
 	}
 
 	public static function append_search_query( $url ) {
-		if ( is_search() && in_the_loop() ) {
-				$url = add_query_arg('s', urlencode(get_query_var('s')), $url);
+		// do we need in_the_loop() check here ? (it breaks bbPress url support)
+		if ( self::have_search_terms() ) {
+			$url = add_query_arg('hilite', urlencode( '"' . implode('","',self::$search_terms) . '"' ), $url);
 		}
 		return $url;
 	}
 
 	public static function enqueue_script() {
 		if ( defined('WP_DEBUG') && true == WP_DEBUG )
-			wp_enqueue_script('hlst-extend', plugins_url('hlst-extend.js', __FILE__), array('jquery'), self::get_version(), true);
+			wp_enqueue_script('hlst-extend', plugins_url('hlst-extend.js', __FILE__), array('jquery'), self::$version, true);
 		else
-			wp_enqueue_script('hlst-extend', plugins_url('hlst-extend.min.js', __FILE__), array('jquery'), self::get_version(), true);
+			wp_enqueue_script('hlst-extend', plugins_url('hlst-extend.min.js', __FILE__), array('jquery'), self::$version, true);
 	}
 
 	public static function split_search_terms( $search ) {
 		$return = array();
-		if ( preg_match_all('/([^\s"\']+)|"([^"]*)"|\'([^\']*)\'/', stripslashes(urldecode($search)), $terms) ) {
+		if ( preg_match_all('/([^\s"\',\+]+)|"([^"]*)"|\'([^\']*)\'/', stripslashes(urldecode($search)), $terms) ) {
 			foreach($terms[0] as $term) {
-				$term = esc_attr(trim(str_replace(array('"','\'','%22'), '', $term)));
+				$term = trim(str_replace(array('"','\'','%22','%27'), '', $term));
 				if ( !empty($term) )
-					$return[] = esc_attr($term);
+					$return[] = $term;
 			}
 		}
 		return $return;
 	}
 
-	// Get query variables and print header script
-	public static function query() {
-		$filtered = array();
-		$searches = array();
+	private static function have_search_terms() {
+		// did we look for search terms before?
+		if ( isset( self::$search_terms ) )
+			return empty( self::$search_terms ) ? false : true;
 
-		// get terms
-		if ( $searches = get_query_var( 'search_terms' ) ) { // regular WP search
-			// prepare js array
-			foreach ($searches as $search) {
-				$filtered[] = esc_attr($search);
-			}
-		} elseif ( $search = get_query_var( 'bbp_search' ) ) { // bbPress search
-			// prepare js array
-			$filtered = self::split_search_terms($search);
-		} else { // conventional search (keep for pre 3.7 compat?)
-			$searches[] = get_search_query();
-			// prepare js array
-			if ( '1' == get_query_var( 'sentence' ) ) {
-				// treat it as a one sentence search, take only the first search term
-				$filtered[] = $searches[0];
-			} else {
-				foreach ($searches as $search) {
-					$filtered = self::split_search_terms($search);
-				}
-			}
-		}
+		// prepare js array
+		self::$search_terms = array();
+
+		// check for click-through from search results page
+		if ( isset($_GET['hilite']) )
+			self::$search_terms = self::split_search_terms( $_GET['hilite'] );
+		// try regular parsed WP search terms
+		elseif ( $searches = get_query_var( 'search_terms', false ) )
+				self::$search_terms = $searches;
+		// try for bbPress search
+		elseif ( $search = get_query_var( 'bbp_search', false ) )
+			self::$search_terms = self::split_search_terms( $search );
+
+		return empty( self::$search_terms ) ? false : true;
+	}
+
+	// Get query variables and print footer script
+	public static function print_script() {
+		$terms = self::have_search_terms() ? wp_json_encode( (array) self::$search_terms ) : '[]';
+		$areas = wp_json_encode( (array) self::$areas);
 
 		echo '
-<!-- Highlight Search Terms ' . self::get_version() . ' ( RavanH - http://status301.net/wordpress-plugins/highlight-search-terms/ ) -->
+<!-- Highlight Search Terms ' . self::$version . ' ( RavanH - http://status301.net/wordpress-plugins/highlight-search-terms/ ) -->
 <script type="text/javascript">
-var hlst_query = new Array("' . implode('","',$filtered) . '");
-var hlst_areas = new Array("' . implode('","',self::$areas) . '");
+var hlst_query = ' . $terms . ';
+var hlst_areas = ' . $areas . ';
 </script>
 ';
 	}

@@ -1,10 +1,10 @@
 === Highlight Search Terms ===
 Contributors: RavanH
-Donate link: https://www.paypal.com/cgi-bin/webscr?cmd=_donations&amp;business=ravanhagen%40gmail%2ecom&amp;item_name=Highlight%20Search%20Terms&amp;item_number=0%2e6&amp;no_shipping=0&amp;tax=0&amp;bn=PP%2dDonationsBF&amp;charset=UTF%2d8
+Donate link: https://www.paypal.com/cgi-bin/webscr?cmd=_donations&amp;business=ravanhagen%40gmail%2ecom&amp;item_name=Highlight%20Search%20Terms&amp;no_shipping=0&amp;tax=0&amp;bn=PP%2dDonationsBF&amp;charset=UTF%2d8
 Tags: mark, highlight, hilite, search, term, terms, jquery
-Requires at least: 2.7
-Tested up to: 4.5
-Stable tag: 1.4
+Requires at least: 3.7
+Tested up to: 4.7
+Stable tag: 1.4.4
 
 Very lightweight jQuery script that wraps search terms in an HTML5 mark tag within wp search results or when referrer is a non-secure search engine.
 
@@ -20,7 +20,7 @@ Development, bug reports and contributions on https://github.com/RavanH/highligh
 - BuddyPress / bbPress compatibility: highlighting within forum searches
 - Caching (WP Super Cache) compatibility
 - Click through highlights: Highlights not only on WP search results page but also one click deeper inside any of the found pages
-- Search terms wrapped in double qoutes now considered as single term
+- Search terms wrapped in double quotes now considered as single term
 - Support for many more search engines: Google, Bing, Yahoo, Lycos, Ask, AOL, Baidu, Youdao, Dogpile, Search.com, Goodsearch.com, Mywebsearch.com, Webcrawler.com, Info.com
 
 **NOTE:** to make the highlights visible in browsers that do not support HTML5 like Internet Explorer 8 or older you will have to define at least one CSS hilite styling! Read on below **So what do I need to do?** and [Installation](http://wordpress.org/extend/plugins/highlight-search-terms/installation/) for more detailed instructions. You can find CSS examples in [Other Notes](http://wordpress.org/extend/plugins/highlight-search-terms/other_notes/).
@@ -145,11 +145,40 @@ Please provide me with a bug report, suggestion, question on https://github.com/
 
 == Upgrade Notice ==
 
-= 1.4 =
+= 1.4.4 =
 
-Better click-through highlighting and updated bbPress compatibility.
+XSS vulnerability reported by Ben Bidner.
 
 == Changelog ==
+
+= 1.4.4 =
+
+Date 2017-02-24
+
+* FIX: XSS vulnerability reported by Ben Bidner @ Automattic
+
+= 1.4.3 =
+
+Date 2017-01-31
+Dev time: 3h
+
+* BUGFIX: [] operator not supported for strings in PHP 7, thanks @seppsoft
+* Drop pre WP 3.7 support
+* Improved bbPress support
+
+= 1.4.2 =
+
+Date 2016-10-04
+Dev time: 3h
+
+* BUGFIX: use filtered search terms for click through highlighting
+
+= 1.4.1 =
+
+Date 2016-07-20
+Dev time: 2h
+
+* BUGFIX: incompatibility with Relevanssi and other search plugins
 
 = 1.4 =
 
