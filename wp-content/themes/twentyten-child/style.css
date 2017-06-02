@@ -1,0 +1,16 @@
+/*
+Theme Name: Twenty Ten Child
+Theme URI: https://wordpress.org/themes/twentyten/
+Description: Child theme for the Twenty Ten theme
+Version: 1.0.0
+Author: Beit Hatfutsot
+Author URI: http://www.bh.org.il/
+Text Domain: twentyten
+Template: twentyten
+*/
+
+/**
+* YOUR CSS CODE, PUT IN assets/css/style.css
+*/
+
+@import "assets/css/style.css";
