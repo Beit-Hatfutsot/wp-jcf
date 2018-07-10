@@ -14,3 +14,7 @@ Template: twentyten
 */
 
 @import "assets/css/style.css";
+
+#bh-link {
+    text-align: end;
+}
